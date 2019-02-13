@@ -17,7 +17,7 @@
 # this program; if not, write to the Free Software Foundation, Inc., 59
 # Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-TFW_CFLAGS = $(DEFINES) -Werror -mpreferred-stack-boundary=4
+TFW_CFLAGS = $(DEFINES) -mstack-alignment=4
 ifdef NORMALIZATION
 	TFW_CFLAGS += -DTFW_HTTP_NORMALIZATION
 endif
@@ -45,10 +45,6 @@ ifneq ($(ARCH), x86_64)
 endif
 ifeq (, $(findstring sse4_2, $(PROC)))
 	ERROR = "SSE 4.2 support is required"
-endif
-ifneq (, $(findstring avx2, $(PROC)))
-	AVX2 = "y"
-	TFW_CFLAGS += -DAVX2=1
 endif
 ifeq (, $(findstring pse, $(PROC)))
 	ERROR = "1MB huge pages support is required"
