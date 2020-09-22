@@ -227,11 +227,26 @@ typedef struct {
  * @resp_code_stat	- response code record
  */
 typedef struct {
+	unsigned char eh[20 * 64 - 4];
+	int i;
 	unsigned int		conn_curr;
 	spinlock_t		lock;
 	FrangRates		history[FRANG_FREQ];
 	FrangRespCodeStat	resp_code_stat[FRANG_FREQ];
 } FrangAcc;
+
+static DEFINE_SPINLOCK(g_lock);
+
+static inline void frang_acc_point(FrangAcc *ra, char point)
+{
+	spin_lock(&g_lock);
+	if (ra->i >= sizeof(ra->eh)) {
+		spin_unlock(&g_lock);
+		return;
+	}
+	ra->eh[ra->i++] = point | (smp_processor_id() << 4);
+	spin_unlock(&g_lock);
+}
 
 #define FRANG_CLI2ACC(c)	((FrangAcc *)(&(c)->class_prvt))
 #define FRANG_ACC2CLI(a)	container_of((TfwClassifierPrvt *)a,	\
@@ -290,6 +305,7 @@ frang_conn_limit(FrangAcc *ra, FrangGlobCfg *conf)
 	 */
 	ra->history[i].conn_new++;
 	ra->conn_curr++;
+	frang_acc_point(ra, 2);
 
 	if (conf->conn_max && ra->conn_curr > conf->conn_max) {
 		frang_limmsg("connections max num.", ra->conn_curr,
@@ -321,6 +337,7 @@ __frang_init_acc(void *data)
 {
 	TfwClient *cli = (TfwClient *)data;
 	FrangAcc *ra = FRANG_CLI2ACC(cli);
+	frang_acc_point(ra, 6);
 
 	spin_lock_init(&ra->lock);
 }
@@ -334,6 +351,7 @@ frang_conn_new(struct sock *sk)
 	TfwAddr addr;
 	TfwVhost *dflt_vh = tfw_vhost_lookup_default();
 
+	printk("frang_conn_new,   sk=%p\n", sk);
 	/*
 	 * Default vhost configuration stores global frang settings, it's always
 	 * available even on reload under heavy load. But the pointer comes
@@ -351,8 +369,11 @@ frang_conn_new(struct sock *sk)
 	}
 
 	ra = FRANG_CLI2ACC(cli);
+//	printk("frang_conn_new, obtained cli=%p, ra=%p, ra->conn_curr=%d\n", cli, ra, ra->conn_curr);
+	frang_acc_point(ra, 5);
 
 	spin_lock(&ra->lock);
+//	printk("frang_conn_new,   sk=%p, in spinlock\n", sk);
 
 	/*
 	 * sk->sk_user_data references TfwConn{} which in turn references
@@ -398,10 +419,33 @@ static void
 frang_conn_close(struct sock *sk)
 {
 	FrangAcc *ra = sk->sk_security;
+	printk("frang_conn_close, sk=%p, ra=%p\n", sk, ra);
 
 	BUG_ON(!ra);
 
 	spin_lock(&ra->lock);
+	frang_acc_point(ra, 1);
+	if (ra->conn_curr == 0) {
+	    int i;
+	    spin_lock(&g_lock);
+	    printk("ra->eh dump: ----\n");
+	    for (i = 0; i < ra->i; i++) {
+		int type = ra->eh[i] & 15;
+		const char *type_name = "unknown";
+		switch (type) {
+		case 1: type_name = "frang_conn_close (decrement)"; break;
+		case 2: type_name = "frang_conn_limit (increment)"; break;
+		case 3: type_name = "frang_resp_fwd_process"; break;
+		case 4: type_name = "frang_http_req_handler"; break;
+		case 5: type_name = "frang_conn_new"; break;
+		case 6: type_name = "__frang_init_acc"; break;
+		}
+		printk("ev %4d: core%d, point %d %s\n", i, ra->eh[i] >> 4,
+		       type, type_name);
+	    }
+	    printk("=================\n");
+	    spin_unlock(&g_lock);
+	}
 
 	BUG_ON(!ra->conn_curr);
 	ra->conn_curr--;
@@ -1123,6 +1167,8 @@ frang_http_req_handler(void *obj, TfwFsmData *data)
 	if (req->peer)
 		ra = FRANG_CLI2ACC(req->peer);
 
+	frang_acc_point(ra, 4);
+
 	if (test_bit(TFW_HTTP_B_WHITELIST, ((TfwHttpReq *)data->req)->flags))
 		return TFW_PASS;
 
@@ -1246,6 +1292,7 @@ frang_resp_fwd_process(TfwHttpResp *resp)
 	ra = (FrangAcc *)req->conn->sk->sk_security;
 	if (req->peer)
 		ra = FRANG_CLI2ACC(req->peer);
+	frang_acc_point(ra, 3);
 	frang_dbg("client %s check response %d, acc=%p\n",
 		  &FRANG_ACC2CLI(ra)->addr, resp->status, ra);
 

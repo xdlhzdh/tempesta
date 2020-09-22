@@ -36,9 +36,9 @@
 
 /* Size of classifier private client accounting data. */
 #ifdef CONFIG_DEBUG_LOCK_ALLOC
-#define TFW_CLASSIFIER_ACCSZ	512
+#define TFW_CLASSIFIER_ACCSZ	1600
 #else
-#define TFW_CLASSIFIER_ACCSZ	256
+#define TFW_CLASSIFIER_ACCSZ	1600
 #endif
 
 typedef struct { char _[TFW_CLASSIFIER_ACCSZ]; } TfwClassifierPrvt;

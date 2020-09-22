@@ -1,0 +1,111 @@
+digraph {
+	sock_put [fillcolor=lightgray, style = filled]
+
+	ss_sock_put -> sock_put;
+	ss_send -> sock_put;
+	ss_linkerror -> sock_put;
+	ss_close -> sock_put;
+	ss_tcp_state_change -> sock_put;
+	__sk_close_locked -> sock_put;
+	ss_tx_action -> sock_put;
+
+	tfw_connection_unlink_to_sk -> ss_sock_put;
+
+	tfw_http_conn_send -> ss_send;
+
+	ss_tcp_state_change -> ss_linkerror;
+
+	tfw_http_conn_close -> ss_close;
+	ss_tcp_data_ready -> ss_close;
+	ss_tcp_state_change -> ss_close;
+
+	ss_tx_action -> __sk_close_locked;
+
+	"{struct sock}->sk_data_ready" -> ss_tcp_data_ready;
+
+	"{struct sock}->sk_state_change" -> ss_tcp_state_change;
+
+	"kernel::net_tx_action" -> ss_tx_action;
+
+	tfw_srv_conn_release -> tfw_connection_unlink_to_sk;
+	tfw_cli_conn_release -> tfw_connection_unlink_to_sk;
+
+	tfw_connection_put -> tfw_cli_conn_release;
+
+	tfw_connection_close -> tfw_http_conn_close;
+
+	tfw_connection_send -> tfw_http_conn_send;
+
+	tfw_sock_srv_connect_try -> tfw_srv_conn_release;
+	tfw_connection_put -> tfw_srv_conn_release;
+
+	tfw_sock_srv_disconnect -> tfw_connection_close;
+	tfw_http_resp_build_error -> tfw_connection_close;
+	tfw_h2_resp_fwd -> tfw_connection_close;
+	__tfw_http_resp_fwd -> tfw_connection_close;
+	tfw_http_resp_fwd -> tfw_connection_close;
+	tfw_h2_error_resp -> tfw_connection_close;
+	tfw_h1_error_resp -> tfw_connection_close;
+	tfw_h2_conn_terminate_close -> tfw_connection_close;
+	tfw_sock_cli_keepalive_timer_cb -> tfw_connection_close;
+	__cli_conn_close_cb -> tfw_connection_close;
+	__cli_conn_close_sync_cb -> tfw_connection_close;
+
+	tfw_cli_conn_close_all -> __cli_conn_close_cb;
+
+	tfw_cli_conn_close_all_sync -> __cli_conn_close_sync_cb;
+
+	tfw_http_resp_fwd -> __tfw_http_resp_fwd;
+	
+	tfw_sock_clnt_stop -> tfw_cli_conn_close_all;
+	
+	frang_resp_fwd_process -> tfw_cli_conn_close_all_sync;
+	
+	frang_resp_handler -> frang_resp_fwd_process;
+	
+	tfw_h2_resp_fwd -> tfw_connection_put;
+	tfw_http_conn_msg_free -> tfw_connection_put;
+	tfw_http_hm_srv_send -> tfw_connection_put;
+	tfw_http_req_cache_cb -> tfw_connection_put;
+	tfw_http_req_resched -> tfw_connection_put;
+	tfw_http_resp_fwd -> tfw_connection_put;
+	tfw_sock_clnt_drop -> tfw_connection_put;
+	tfw_sock_srv_connect_drop -> tfw_connection_put;
+
+	__gfsm_fsm_exec -> frang_resp_handler;
+	
+	tfw_http_req_fwd_send -> tfw_connection_send;
+	__tfw_h2_send_frame -> tfw_connection_send;
+	tfw_cli_conn_send -> tfw_connection_send;
+
+	tfw_h2_resp_fwd -> tfw_cli_conn_send;
+	__tfw_http_resp_fwd -> tfw_cli_conn_send;
+
+	tfw_gfsm_dispatch -> __gfsm_fsm_exec;
+	tfw_gfsm_move -> __gfsm_fsm_exec;
+
+	__tfw_h2_stream_unlink -> tfw_http_conn_msg_free;
+	cache_req_process_node -> tfw_http_conn_msg_free;
+	tfw_h1_resp_adjust_fwd -> tfw_http_conn_msg_free;
+	tfw_h2_error_resp -> tfw_http_conn_msg_free;
+	tfw_h2_resp_adjust_fwd -> tfw_http_conn_msg_free;
+	tfw_h2_send_resp -> tfw_http_conn_msg_free;
+	tfw_http_cli_error_resp_and_log -> tfw_http_conn_msg_free;
+	tfw_http_conn_drop -> tfw_http_conn_msg_free;
+	tfw_http_conn_msg_alloc -> tfw_http_conn_msg_free;
+	tfw_http_conn_release -> tfw_http_conn_msg_free;
+	tfw_http_conn_req_clean -> tfw_http_conn_msg_free;
+	tfw_http_hm_drop_resp -> tfw_http_conn_msg_free;
+	tfw_http_req_evict_dropped -> tfw_http_conn_msg_free;
+	tfw_http_req_resched -> tfw_http_conn_msg_free;
+	tfw_http_req_zap_error -> tfw_http_conn_msg_free;
+	tfw_http_resp_cache -> tfw_http_conn_msg_free;
+	tfw_http_resp_gfsm -> tfw_http_conn_msg_free;
+	tfw_http_resp_pair_free -> tfw_http_conn_msg_free;
+	tfw_http_resp_process -> tfw_http_conn_msg_free;
+	tfw_http_resp_terminate -> tfw_http_conn_msg_free;
+
+
+
+
+}
